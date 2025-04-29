@@ -185,7 +185,10 @@
 ;; NFT Read-Only Functions
 
 (define-read-only (get-nft-owner (nft-id uint))
-  (get owner (default-to {owner: 'ST000000000000000000000000000000000000000} (map-get? nft-ownership {id: nft-id})))
+  (match (map-get? nft-ownership {id: nft-id})
+    owner-data (ok (get owner owner-data))
+    (err ERR_NFT_NOT_FOUND)
+  )
 )
 
 (define-read-only (get-nft-metadata (nft-id uint))
