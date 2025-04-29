@@ -1,5 +1,5 @@
 ;; LearnRewards Protocol
-;; A decentralized education incentive system
+;; A decentralized education incentive system with NFT certifications
 
 ;; Constants
 (define-constant MAX_CREDIT_RESERVE u1000000)
@@ -13,11 +13,15 @@
 (define-constant COMMITMENT_BONUS u2)
 (define-constant MIN_COMMITMENT_PERIOD u288)
 (define-constant EARLY_EXIT_PENALTY u10)
+(define-constant ERR_UNAUTHORIZED u4)
+(define-constant ERR_NFT_NOT_FOUND u5)
+(define-constant ERR_NOT_OWNER u6)
 
 ;; Data Variables
 (define-data-var total-credits-issued uint u0)
 (define-data-var total-courses-completed uint u0)
 (define-data-var platform-administrator principal tx-sender)
+(define-data-var last-nft-id uint u0)
 
 ;; Data Maps
 (define-map student-courses principal uint)
@@ -27,6 +31,11 @@
 (define-map last-completion-block principal uint)
 (define-map staked-credits principal uint)
 (define-map stake-start-block principal uint)
+
+;; NFT Data Maps
+(define-map nft-ownership {id: uint} {owner: principal})
+(define-map nft-metadata {id: uint} {course-duration: uint, completion-block: uint, streak-level: uint})
+(define-map user-nfts principal (list 100 uint))
 
 ;; Public Functions
 
@@ -51,18 +60,26 @@
       (streak (default-to u0 (map-get? learning-streak student)))
       (capped-streak (if (<= streak MAX_STREAK_TIER) streak MAX_STREAK_TIER))
       (reward-amount (+ BASE_COMPLETION_REWARD (* capped-streak STREAK_BONUS)))
+      (new-streak (if (< (- burn-block-height previous-completion-block) BLOCKS_PER_DAY)
+                     (+ streak u1)
+                     u1))
+      (nft-id (+ (var-get last-nft-id) u1))
     )
     (asserts! (and (> enrollment-block u0) (>= blocks-elapsed duration)) (err ERR_INVALID_COURSE))
     (map-set student-courses student (+ (default-to u0 (map-get? student-courses student)) u1))
     (map-set student-rewards student (+ (default-to u0 (map-get? student-rewards student)) reward-amount))
-    (if (< (- burn-block-height previous-completion-block) BLOCKS_PER_DAY)
-      (map-set learning-streak student (+ streak u1))
-      (map-set learning-streak student u1)
-    )
+    (map-set learning-streak student new-streak)
     (map-set last-completion-block student burn-block-height)
     (var-set total-courses-completed (+ (var-get total-courses-completed) u1))
     (var-set total-credits-issued (+ (var-get total-credits-issued) reward-amount))
     (asserts! (<= (var-get total-credits-issued) MAX_CREDIT_RESERVE) (err ERR_RESERVE_EMPTY))
+    
+    ;; Mint NFT certification
+    (var-set last-nft-id nft-id)
+    (map-set nft-ownership {id: nft-id} {owner: student})
+    (map-set nft-metadata {id: nft-id} {course-duration: duration, completion-block: burn-block-height, streak-level: capped-streak})
+    (map-set user-nfts student (unwrap-panic (as-max-len? (append (default-to (list) (map-get? user-nfts student)) nft-id) u100)))
+    
     (ok reward-amount)
   )
 )
@@ -113,6 +130,36 @@
   )
 )
 
+;; NFT Functions
+
+(define-public (transfer-nft (nft-id uint) (recipient principal))
+  (let
+    (
+      (sender tx-sender)
+      (nft-data (map-get? nft-ownership {id: nft-id}))
+    )
+    (asserts! (is-some nft-data) (err ERR_NFT_NOT_FOUND))
+    (asserts! (is-eq sender (get owner (unwrap-panic nft-data))) (err ERR_NOT_OWNER))
+    
+    ;; Update ownership
+    (map-set nft-ownership {id: nft-id} {owner: recipient})
+    
+    ;; Update sender's NFT list
+    (let
+      (
+        (sender-nfts (default-to (list) (map-get? user-nfts sender)))
+        (updated-sender-nfts (filter (lambda (id) (not (is-eq id nft-id))) sender-nfts))
+      )
+      (map-set user-nfts sender updated-sender-nfts)
+    )
+    
+    ;; Update recipient's NFT list
+    (map-set user-nfts recipient (unwrap-panic (as-max-len? (append (default-to (list) (map-get? user-nfts recipient)) nft-id) u100)))
+    
+    (ok true)
+  )
+)
+
 ;; Read-Only Functions
 
 (define-read-only (get-completed-courses (user principal))
@@ -130,8 +177,27 @@
 (define-read-only (get-platform-stats)
   {
     total-courses-completed: (var-get total-courses-completed),
-    total-credits-issued: (var-get total-credits-issued)
+    total-credits-issued: (var-get total-credits-issued),
+    total-nfts-issued: (var-get last-nft-id)
   }
+)
+
+;; NFT Read-Only Functions
+
+(define-read-only (get-nft-owner (nft-id uint))
+  (get owner (default-to {owner: 'ST000000000000000000000000000000000000000} (map-get? nft-ownership {id: nft-id})))
+)
+
+(define-read-only (get-nft-metadata (nft-id uint))
+  (map-get? nft-metadata {id: nft-id})
+)
+
+(define-read-only (get-user-nfts (user principal))
+  (default-to (list) (map-get? user-nfts user))
+)
+
+(define-read-only (get-nft-count)
+  (var-get last-nft-id)
 )
 
 ;; Private Functions
