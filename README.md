@@ -1,10 +1,10 @@
 # LearnRewards Protocol
 
-A decentralized education incentive system that rewards continuous learning on the Stacks blockchain.
+A decentralized education incentive system that rewards continuous learning on the Stacks blockchain with verifiable NFT certifications.
 
 ## Overview
 
-LearnRewards Protocol is designed to incentivize and reward educational activities through a tokenized credit system. By completing courses and maintaining learning streaks, participants earn credits that can be claimed or staked for additional benefits.
+LearnRewards Protocol is designed to incentivize and reward educational activities through a tokenized credit system. By completing courses and maintaining learning streaks, participants earn credits that can be claimed or staked for additional benefits. Additionally, learners receive NFT certifications as verifiable proof of their educational achievements.
 
 ## Features
 
@@ -12,14 +12,17 @@ LearnRewards Protocol is designed to incentivize and reward educational activiti
 - **Learning Streaks**: Build a streak by completing courses regularly for bonus rewards
 - **Credit Staking**: Stake earned credits to demonstrate commitment and earn bonuses
 - **Achievement Tracking**: Monitor your learning progress and completed courses on-chain
+- **NFT Certifications**: Receive unique, transferable NFTs for each course completion
+- **Verifiable Credentials**: Share and prove your educational achievements with blockchain-backed NFTs
 
 ## How It Works
 
 1. **Enrollment**: Students enroll in courses by specifying the expected duration
-2. **Completion**: Upon completing a course, students receive base rewards plus streak bonuses
+2. **Completion**: Upon completing a course, students receive base rewards plus streak bonuses and an NFT certification
 3. **Streaks**: Maintaining a consistent learning schedule (daily completions) increases streak multipliers
 4. **Claiming**: Earned credits can be claimed at any time
 5. **Staking**: Optional staking of credits for longer-term commitment benefits
+6. **NFT Management**: Certifications can be viewed and transferred to other users
 
 ## Technical Details
 
@@ -44,6 +47,13 @@ LearnRewards Protocol is designed to incentivize and reward educational activiti
 - Early exit penalty: 10% of staked amount
 - Successful completion of commitment period returns 100% of staked credits
 
+### NFT Certification System
+
+- Each course completion generates a unique NFT certification
+- NFTs contain metadata about the course, completion date, and streak level
+- Certifications are transferable between users
+- Each user can hold up to 100 certification NFTs
+
 ## Usage
 
 ### For Students
@@ -66,6 +76,12 @@ LearnRewards Protocol is designed to incentivize and reward educational activiti
 
 ;; Unstake your credits after commitment period
 (contract-call? .learn-rewards unstake-credits)
+
+;; View your NFT certifications
+(contract-call? .learn-rewards get-user-nfts tx-sender)
+
+;; Transfer an NFT certification to another user
+(contract-call? .learn-rewards transfer-nft u1 'ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM)
 ```
 
 ### For Platform Administrators
@@ -82,14 +98,16 @@ LearnRewards Protocol is designed to incentivize and reward educational activiti
 3. Complete the course after the required duration
 4. Build your streak by completing courses daily
 5. Claim or stake your rewards
+6. View and manage your NFT certifications
 
 ## Future Development
 
 - Integration with educational content providers
 - Expansion of reward tiers and specialized learning paths
 - Community governance of protocol parameters
-- NFT certifications for significant achievements
+- Enhanced NFT metadata and visual representations
 - Cross-platform educational credential verification
+- Marketplace for trading educational certifications
 
 ## Contributing
 
